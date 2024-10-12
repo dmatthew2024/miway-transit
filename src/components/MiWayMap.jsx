@@ -6,84 +6,73 @@ import protobuf from 'protobufjs';
 
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
-  const [mapKey, setMapKey] = useState('default-map');
-  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+  const [error, setError] = useState(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
-  // Function to fetch bus data from the .pb file
-  const fetchBusData = async () => {
-    try {
-      const root = await protobuf.load('/proto/gtfs-realtime.proto');
-      const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
-
-      const response = await axios.get('/api/GTFS_RT/Vehicle/VehiclePositions.pb', {
-        responseType: 'arraybuffer',
-      });
-
-      const message = FeedMessage.decode(new Uint8Array(response.data));
-      const object = FeedMessage.toObject(message, {
-        enums: String,
-        longs: String,
-        defaults: true,
-        arrays: true,
-        objects: true,
-      });
-
-      const vehiclePositions = object.entity.map(entity => ({
-        fleet_number: entity.vehicle.vehicle.id,
-        route: entity.vehicle.trip.routeId,
-        latitude: entity.vehicle.position.latitude,
-        longitude: entity.vehicle.position.longitude,
-        occupancy: entity.vehicle.occupancyStatus || 'Unknown',
-      }));
-
-      setBuses(vehiclePositions);
-    } catch (error) {
-      console.error('Error fetching or decoding the .pb file:', error);
-    }
-  };
-
-  // Fetch bus data on component mount and set up interval to refresh data every 15 seconds
   useEffect(() => {
-    fetchBusData();
-    const intervalId = setInterval(() => {
-      fetchBusData();
-    }, 15000); // Update every 15 seconds
+    const fetchBusData = async () => {
+      try {
+        console.log('Fetching bus data...', new Date().toLocaleTimeString());
+        
+        const root = await protobuf.load('/miway-transit/proto/gtfs-realtime.proto');
+        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
 
-    // Cleanup the interval on component unmount
+        const baseUrl = import.meta.env.PROD 
+          ? 'https://www.miapp.ca' 
+          : '/api';
+        const url = `${baseUrl}/GTFS_RT/Vehicle/VehiclePositions.pb`;
+
+        const response = await axios.get(url, {
+          responseType: 'arraybuffer'
+        });
+
+        const message = FeedMessage.decode(new Uint8Array(response.data));
+        const object = FeedMessage.toObject(message, {
+          enums: String,
+          longs: String,
+          defaults: true,
+          arrays: true,
+          objects: true
+        });
+
+        const vehiclePositions = object.entity.map(entity => ({
+          fleet_number: entity.vehicle.vehicle.id,
+          route: entity.vehicle.trip.routeId,
+          latitude: entity.vehicle.position.latitude,
+          longitude: entity.vehicle.position.longitude,
+          occupancy: entity.vehicle.occupancyStatus || 'Unknown'
+        }));
+
+        setBuses(vehiclePositions);
+        setError(null);
+        setLastUpdateTime(new Date());
+        console.log("Bus data updated, count:", vehiclePositions.length);
+      } catch (error) {
+        console.error('Error fetching or decoding the .pb file:', error);
+        setError(`Error: ${error.message}`);
+      }
+    };
+
+    fetchBusData();
+    const intervalId = setInterval(fetchBusData, 15000);
     return () => clearInterval(intervalId);
   }, []);
 
-  // Reset the map key whenever the search term changes to avoid map reinitialization issues
-  useEffect(() => {
-    setMapKey(`map-${localSearchTerm}`);
-  }, [localSearchTerm]);
-
-  // Filter buses based on the search term for both fleet number and route
-  const filteredBuses = buses.filter(bus => {
-    const routeMatch = bus.route.toLowerCase().includes(localSearchTerm.toLowerCase());
-    const fleetMatch = bus.fleet_number.toLowerCase().includes(localSearchTerm.toLowerCase());
+  const filteredBuses = buses.filter((bus) => {
+    const routeMatch = bus.route.toLowerCase().includes(searchTerm.toLowerCase());
+    const fleetMatch = bus.fleet_number.toLowerCase().includes(searchTerm.toLowerCase());
     return routeMatch || fleetMatch;
   });
 
   return (
-    <>
-      <input
-        type="text"
-        placeholder="Search by fleet number or route" // Updated placeholder text
-        value={localSearchTerm}
-        onChange={(e) => setLocalSearchTerm(e.target.value)} // Update the search term as the user types
-      />
-      <MapContainer
-        key={mapKey} // Reset the map if the key changes
-        center={[43.5890, -79.6441]}
-        zoom={12}
-        style={{ height: '100vh', width: '100%' }}
-      >
+    <div>
+      {error && <div style={{color: 'red', padding: '10px'}}>{error}</div>}
+      <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "80vh", width: "100%" }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="&copy; OpenStreetMap contributors"
         />
-        {filteredBuses.map(bus => (
+        {filteredBuses.map((bus) => (
           <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
             <Popup>
               <strong>Fleet Number:</strong> {bus.fleet_number} <br />
@@ -93,7 +82,9 @@ const MiWayMap = ({ searchTerm }) => {
           </Marker>
         ))}
       </MapContainer>
-    </>
+      <div>Total buses: {filteredBuses.length}</div>
+      <div>Last updated: {lastUpdateTime.toLocaleTimeString()}</div>
+    </div>
   );
 };
 
