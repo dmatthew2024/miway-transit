@@ -65,6 +65,11 @@ const MiWayMap = ({ searchTerm }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Filter buses based on search term
+  const filteredBuses = buses.filter(bus => 
+    searchTerm ? bus.route.toString() === searchTerm : true
+  );
+
   return (
     <div>
       <h1>MiWay Transit Tracker</h1>
@@ -77,7 +82,7 @@ const MiWayMap = ({ searchTerm }) => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-          {buses.map((bus) => (
+          {filteredBuses.map((bus) => (
             <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
               <Popup>
                 Fleet Number: {bus.fleet_number}<br />
