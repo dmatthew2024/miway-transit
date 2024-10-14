@@ -3,14 +3,18 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/miway-transit/',
+  build: {
+    sourcemap: true,
+    outDir: 'dist', // Explicitly set the output directory
+  },
   server: {
+    port: 5173,
     proxy: {
-      '/api': {
-        target: 'https://www.miapp.ca',
+      '/.netlify/functions': {
+        target: 'http://localhost:8888',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
-  }
+        rewrite: (path) => path.replace(/^\/.netlify\/functions/, ''),
+      },
+    },
+  },
 });

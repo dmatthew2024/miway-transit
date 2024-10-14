@@ -1,30 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import protobuf from 'protobufjs';
 
+// Fix for default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
   const [error, setError] = useState(null);
-  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
   useEffect(() => {
     const fetchBusData = async () => {
+      console.log('Fetching bus data...');
       try {
-        console.log('Fetching bus data...', new Date().toLocaleTimeString());
-        
-        const root = await protobuf.load('/miway-transit/proto/gtfs-realtime.proto');
+        const root = await protobuf.load('/proto/gtfs-realtime.proto');
         const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
 
-        const baseUrl = import.meta.env.PROD 
-          ? 'https://www.miapp.ca' 
-          : '/api';
-        const url = `${baseUrl}/GTFS_RT/Vehicle/VehiclePositions.pb`;
+        const url = '/.netlify/functions/proxy';
 
+        console.log('Fetching data from:', url);
         const response = await axios.get(url, {
           responseType: 'arraybuffer'
         });
+        console.log('Response received:', response);
 
         const message = FeedMessage.decode(new Uint8Array(response.data));
         const object = FeedMessage.toObject(message, {
@@ -34,6 +40,7 @@ const MiWayMap = ({ searchTerm }) => {
           arrays: true,
           objects: true
         });
+        console.log('Decoded protobuf message:', object);
 
         const vehiclePositions = object.entity.map(entity => ({
           fleet_number: entity.vehicle.vehicle.id,
@@ -43,47 +50,44 @@ const MiWayMap = ({ searchTerm }) => {
           occupancy: entity.vehicle.occupancyStatus || 'Unknown'
         }));
 
+        console.log('Processed bus data:', vehiclePositions);
         setBuses(vehiclePositions);
         setError(null);
-        setLastUpdateTime(new Date());
-        console.log("Bus data updated, count:", vehiclePositions.length);
       } catch (error) {
-        console.error('Error fetching or decoding the .pb file:', error);
-        setError(`Error: ${error.message}`);
+        console.error('Error fetching bus data:', error);
+        console.error('Error details:', error.response ? error.response.data : 'No response data');
+        setError(`Failed to fetch bus data: ${error.message}. ${error.response ? JSON.stringify(error.response.data) : ''}`);
       }
     };
 
     fetchBusData();
-    const intervalId = setInterval(fetchBusData, 15000);
-    return () => clearInterval(intervalId);
+    const interval = setInterval(fetchBusData, 30000);
+    return () => clearInterval(interval);
   }, []);
-
-  const filteredBuses = buses.filter((bus) => {
-    const routeMatch = bus.route.toLowerCase().includes(searchTerm.toLowerCase());
-    const fleetMatch = bus.fleet_number.toLowerCase().includes(searchTerm.toLowerCase());
-    return routeMatch || fleetMatch;
-  });
 
   return (
     <div>
-      {error && <div style={{color: 'red', padding: '10px'}}>{error}</div>}
-      <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "80vh", width: "100%" }}>
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
-        {filteredBuses.map((bus) => (
-          <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
-            <Popup>
-              <strong>Fleet Number:</strong> {bus.fleet_number} <br />
-              <strong>Route:</strong> {bus.route} <br />
-              <strong>Occupancy:</strong> {bus.occupancy}
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-      <div>Total buses: {filteredBuses.length}</div>
-      <div>Last updated: {lastUpdateTime.toLocaleTimeString()}</div>
+      <h1>MiWay Transit Tracker</h1>
+      <p>Search Term: {searchTerm}</p>
+      <p>If you can see this, the component is rendering correctly.</p>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      <div style={{ height: "600px", width: "100%" }}>
+        <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          {buses.map((bus) => (
+            <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
+              <Popup>
+                Fleet Number: {bus.fleet_number}<br />
+                Route: {bus.route}<br />
+                Occupancy: {bus.occupancy}
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
     </div>
   );
 };
