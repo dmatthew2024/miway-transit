@@ -63,12 +63,18 @@ const MiWayMap = ({ searchTerm }) => {
           const response = await axios.get(`/.netlify/functions/transseeProxy?route=${route}`);
           const data = response.data;
           
-          data.forEach(bus => {
-            fleetMap[bus.id] = {
-              publicFleetNumber: bus.vehicle,
-              route: bus.route
-            };
-          });
+          if (Array.isArray(data)) {
+            data.forEach(bus => {
+              if (bus && bus.id && bus.vehicle) {
+                fleetMap[bus.id] = {
+                  publicFleetNumber: bus.vehicle,
+                  route: bus.route
+                };
+              }
+            });
+          } else {
+            console.error('Unexpected data format for route:', route, data);
+          }
         }
 
         setFleetNumberMap(fleetMap);
