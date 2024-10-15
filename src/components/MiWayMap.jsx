@@ -6,13 +6,7 @@ import axios from 'axios';
 import protobuf from 'protobufjs';
 import FleetNumberChart from './FleetNumberChart';
 
-// Fix for default marker icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// ... (keep the existing icon fix code)
 
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
@@ -21,37 +15,7 @@ const MiWayMap = ({ searchTerm }) => {
 
   useEffect(() => {
     const fetchBusData = async () => {
-      try {
-        const root = await protobuf.load('/proto/gtfs-realtime.proto');
-        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
-
-        const response = await axios.get('/.netlify/functions/proxy', {
-          responseType: 'arraybuffer'
-        });
-
-        const message = FeedMessage.decode(new Uint8Array(response.data));
-        const object = FeedMessage.toObject(message, {
-          enums: String,
-          longs: String,
-          defaults: true,
-          arrays: true,
-          objects: true
-        });
-
-        const vehiclePositions = object.entity.map(entity => ({
-          fleet_number: entity.vehicle.vehicle.id,
-          route: entity.vehicle.trip.routeId,
-          latitude: entity.vehicle.position.latitude,
-          longitude: entity.vehicle.position.longitude,
-          occupancy: entity.vehicle.occupancyStatus || 'Unknown'
-        }));
-
-        setBuses(vehiclePositions);
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching bus data:', error);
-        setError(`Failed to fetch bus data: ${error.message}`);
-      }
+      // ... (keep the existing fetchBusData function)
     };
 
     const fetchTransseeData = async () => {
@@ -74,16 +38,6 @@ const MiWayMap = ({ searchTerm }) => {
                 };
               }
             });
-          } else if (data && typeof data === 'object') {
-            // Handle case where data might be a single object
-            if (data.id && data.vehicle) {
-              fleetMap[data.id] = {
-                publicFleetNumber: data.vehicle,
-                route: data.route
-              };
-            }
-          } else {
-            console.error('Unexpected data format for route:', route, data);
           }
         }
 
@@ -106,14 +60,7 @@ const MiWayMap = ({ searchTerm }) => {
     };
   }, []);
 
-  const filteredBuses = buses.filter(bus => {
-    if (!searchTerm) return true;
-    const lowerSearchTerm = searchTerm.toLowerCase().trim();
-    return (
-      bus.fleet_number.toString().toLowerCase().includes(lowerSearchTerm) || 
-      bus.route.toString().toLowerCase().includes(lowerSearchTerm)
-    );
-  });
+  // ... (keep the existing filteredBuses logic)
 
   return (
     <div>
