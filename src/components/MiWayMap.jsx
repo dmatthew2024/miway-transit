@@ -56,11 +56,11 @@ const MiWayMap = ({ searchTerm }) => {
 
     const fetchTransseeData = async () => {
       try {
-        const routes = ['1', '2', '3']; // Add all relevant route numbers
+        const routes = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']; // Add all relevant route numbers
         const fleetMap = {};
 
         for (const route of routes) {
-          const response = await axios.get(`https://www.transsee.ca/routeveh?a=miway&r=${route}&refresh=30`);
+          const response = await axios.get(`/.netlify/functions/transseeProxy?route=${route}`);
           const data = response.data;
           
           data.forEach(bus => {
@@ -91,7 +91,7 @@ const MiWayMap = ({ searchTerm }) => {
 
   const filteredBuses = buses.filter(bus => {
     if (!searchTerm) return true;
-    const lowerSearchTerm = searchTerm.toLowerCase();
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
     return (
       bus.fleet_number.toString().toLowerCase().includes(lowerSearchTerm) || 
       bus.route.toString().toLowerCase().includes(lowerSearchTerm)
@@ -117,7 +117,8 @@ const MiWayMap = ({ searchTerm }) => {
                 <Popup>
                   Internal ID: {bus.fleet_number}<br />
                   Route: {bus.route}<br />
-                  Occupancy: {bus.occupancy}
+                  Occupancy: {bus.occupancy}<br />
+                  Public Fleet Number: {fleetNumberMap[bus.fleet_number]?.publicFleetNumber || 'Unknown'}
                 </Popup>
               </Marker>
             ))}
