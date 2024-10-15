@@ -65,13 +65,13 @@ const MiWayMap = ({ searchTerm }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter buses based on search term (fleet number or route)
+  // Filter buses based on search term (exact match for fleet number or route)
   const filteredBuses = buses.filter(bus => {
     if (!searchTerm) return true;
-    const lowerSearchTerm = searchTerm.toLowerCase();
+    const trimmedSearchTerm = searchTerm.trim();
     return (
-      bus.fleet_number.toString().toLowerCase().includes(lowerSearchTerm) || 
-      bus.route.toString().toLowerCase().includes(lowerSearchTerm)
+      bus.fleet_number.toString() === trimmedSearchTerm || 
+      bus.route.toString() === trimmedSearchTerm
     );
   });
 
