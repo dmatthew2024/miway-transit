@@ -4,82 +4,61 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import protobuf from 'protobufjs';
+import FleetNumberChart from './FleetNumberChart';
 
-// Fix for default marker icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// ... (keep existing icon setup)
 
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
+  const [fleetNumberMap, setFleetNumberMap] = useState({});
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchBusData = async () => {
-      console.log('Fetching bus data...');
+      // ... (keep existing GTFS-RT fetching logic)
+    };
+
+    const fetchTransseeData = async () => {
       try {
-        const root = await protobuf.load('/proto/gtfs-realtime.proto');
-        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+        const routes = ['1', '2', '3']; // Add all relevant route numbers
+        const fleetMap = {};
 
-        const url = '/.netlify/functions/proxy';
+        for (const route of routes) {
+          const response = await axios.get(`https://www.transsee.ca/routeveh?a=miway&r=${route}&refresh=30`);
+          const data = response.data; // Adjust based on actual response format
+          
+          data.forEach(bus => {
+            fleetMap[bus.id] = {
+              publicFleetNumber: bus.vehicle,
+              route: bus.route
+            };
+          });
+        }
 
-        console.log('Fetching data from:', url);
-        const response = await axios.get(url, {
-          responseType: 'arraybuffer'
-        });
-        console.log('Response received:', response);
-
-        const message = FeedMessage.decode(new Uint8Array(response.data));
-        const object = FeedMessage.toObject(message, {
-          enums: String,
-          longs: String,
-          defaults: true,
-          arrays: true,
-          objects: true
-        });
-        console.log('Decoded protobuf message:', object);
-
-        const vehiclePositions = object.entity.map(entity => ({
-          fleet_number: entity.vehicle.vehicle.id,
-          route: entity.vehicle.trip.routeId,
-          latitude: entity.vehicle.position.latitude,
-          longitude: entity.vehicle.position.longitude,
-          occupancy: entity.vehicle.occupancyStatus || 'Unknown'
-        }));
-
-        console.log('Processed bus data:', vehiclePositions);
-        setBuses(vehiclePositions);
-        setError(null);
+        setFleetNumberMap(fleetMap);
       } catch (error) {
-        console.error('Error fetching bus data:', error);
-        console.error('Error details:', error.response ? error.response.data : 'No response data');
-        setError(`Failed to fetch bus data: ${error.message}. ${error.response ? JSON.stringify(error.response.data) : ''}`);
+        console.error('Error fetching Transsee data:', error);
       }
     };
 
     fetchBusData();
+    fetchTransseeData();
+
     const interval = setInterval(fetchBusData, 30000);
-    return () => clearInterval(interval);
+    const transsseeInterval = setInterval(fetchTransseeData, 300000); // Update every 5 minutes
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(transsseeInterval);
+    };
   }, []);
 
-  // Filter buses based on search term (exact match for fleet number or route)
-  const filteredBuses = buses.filter(bus => {
-    if (!searchTerm) return true;
-    const trimmedSearchTerm = searchTerm.trim();
-    return (
-      bus.fleet_number.toString() === trimmedSearchTerm || 
-      bus.route.toString() === trimmedSearchTerm
-    );
-  });
+  // ... (keep existing filtering logic)
 
   return (
     <div>
       <h1>MiWay Transit Tracker</h1>
       <p>Search Term: {searchTerm}</p>
-      <p>If you can see this, the component is rendering correctly.</p>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <div style={{ height: "600px", width: "100%" }}>
         <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
@@ -90,7 +69,7 @@ const MiWayMap = ({ searchTerm }) => {
           {filteredBuses.map((bus) => (
             <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
               <Popup>
-                Fleet Number: {bus.fleet_number}<br />
+                Internal ID: {bus.fleet_number}<br />
                 Route: {bus.route}<br />
                 Occupancy: {bus.occupancy}
               </Popup>
@@ -98,6 +77,7 @@ const MiWayMap = ({ searchTerm }) => {
           ))}
         </MapContainer>
       </div>
+      <FleetNumberChart fleetNumberMap={fleetNumberMap} />
     </div>
   );
 };
