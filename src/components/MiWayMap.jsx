@@ -63,6 +63,8 @@ const MiWayMap = ({ searchTerm }) => {
           const response = await axios.get(`/.netlify/functions/transseeProxy?route=${route}`);
           const data = response.data;
           
+          console.log(`Transsee data for route ${route}:`, data);
+
           if (Array.isArray(data)) {
             data.forEach(bus => {
               if (bus && bus.id && bus.vehicle) {
@@ -72,11 +74,20 @@ const MiWayMap = ({ searchTerm }) => {
                 };
               }
             });
+          } else if (data && typeof data === 'object') {
+            // Handle case where data might be a single object
+            if (data.id && data.vehicle) {
+              fleetMap[data.id] = {
+                publicFleetNumber: data.vehicle,
+                route: data.route
+              };
+            }
           } else {
             console.error('Unexpected data format for route:', route, data);
           }
         }
 
+        console.log('Final fleetMap:', fleetMap);
         setFleetNumberMap(fleetMap);
       } catch (error) {
         console.error('Error fetching Transsee data:', error);

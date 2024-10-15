@@ -32,13 +32,13 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  @apply bg-gray-900 text-white; /* Tailwind class to apply background and text color */
+  @apply bg-gray-900 text-white;
 }
 
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
-  @apply text-gray-50; /* Tailwind class to apply text color */
+  @apply text-gray-50;
 }
 
 button {
@@ -51,11 +51,11 @@ button {
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
-  @apply bg-gray-800 text-white; /* Tailwind class for consistent button styles */
+  @apply bg-gray-800 text-white;
 }
 button:hover {
   border-color: #646cff;
-  @apply bg-gray-700; /* Tailwind hover effect */
+  @apply bg-gray-700;
 }
 button:focus,
 button:focus-visible {
