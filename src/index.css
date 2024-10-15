@@ -74,3 +74,29 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* New styles for FleetNumberChart */
+.fleet-number-chart {
+  @apply mt-8 overflow-x-auto;
+}
+
+.fleet-number-chart table {
+  @apply w-full border-collapse;
+}
+
+.fleet-number-chart th,
+.fleet-number-chart td {
+  @apply border border-gray-600 p-2 text-left;
+}
+
+.fleet-number-chart th {
+  @apply bg-gray-700 text-white;
+}
+
+.fleet-number-chart tr:nth-child(even) {
+  @apply bg-gray-800;
+}
+
+.fleet-number-chart tr:hover {
+  @apply bg-gray-700;
+}

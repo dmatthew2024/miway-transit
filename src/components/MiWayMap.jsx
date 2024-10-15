@@ -6,7 +6,13 @@ import axios from 'axios';
 import protobuf from 'protobufjs';
 import FleetNumberChart from './FleetNumberChart';
 
-// ... (keep existing icon setup)
+// Fix for default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
@@ -15,7 +21,37 @@ const MiWayMap = ({ searchTerm }) => {
 
   useEffect(() => {
     const fetchBusData = async () => {
-      // ... (keep existing GTFS-RT fetching logic)
+      try {
+        const root = await protobuf.load('/proto/gtfs-realtime.proto');
+        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+
+        const response = await axios.get('/.netlify/functions/proxy', {
+          responseType: 'arraybuffer'
+        });
+
+        const message = FeedMessage.decode(new Uint8Array(response.data));
+        const object = FeedMessage.toObject(message, {
+          enums: String,
+          longs: String,
+          defaults: true,
+          arrays: true,
+          objects: true
+        });
+
+        const vehiclePositions = object.entity.map(entity => ({
+          fleet_number: entity.vehicle.vehicle.id,
+          route: entity.vehicle.trip.routeId,
+          latitude: entity.vehicle.position.latitude,
+          longitude: entity.vehicle.position.longitude,
+          occupancy: entity.vehicle.occupancyStatus || 'Unknown'
+        }));
+
+        setBuses(vehiclePositions);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching bus data:', error);
+        setError(`Failed to fetch bus data: ${error.message}`);
+      }
     };
 
     const fetchTransseeData = async () => {
@@ -25,7 +61,7 @@ const MiWayMap = ({ searchTerm }) => {
 
         for (const route of routes) {
           const response = await axios.get(`https://www.transsee.ca/routeveh?a=miway&r=${route}&refresh=30`);
-          const data = response.data; // Adjust based on actual response format
+          const data = response.data;
           
           data.forEach(bus => {
             fleetMap[bus.id] = {
@@ -45,7 +81,7 @@ const MiWayMap = ({ searchTerm }) => {
     fetchTransseeData();
 
     const interval = setInterval(fetchBusData, 30000);
-    const transsseeInterval = setInterval(fetchTransseeData, 300000); // Update every 5 minutes
+    const transsseeInterval = setInterval(fetchTransseeData, 300000);
 
     return () => {
       clearInterval(interval);
@@ -53,30 +89,41 @@ const MiWayMap = ({ searchTerm }) => {
     };
   }, []);
 
-  // ... (keep existing filtering logic)
+  const filteredBuses = buses.filter(bus => {
+    if (!searchTerm) return true;
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return (
+      bus.fleet_number.toString().toLowerCase().includes(lowerSearchTerm) || 
+      bus.route.toString().toLowerCase().includes(lowerSearchTerm)
+    );
+  });
 
   return (
     <div>
       <h1>MiWay Transit Tracker</h1>
       <p>Search Term: {searchTerm}</p>
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      <div style={{ height: "600px", width: "100%" }}>
-        <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          />
-          {filteredBuses.map((bus) => (
-            <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
-              <Popup>
-                Internal ID: {bus.fleet_number}<br />
-                Route: {bus.route}<br />
-                Occupancy: {bus.occupancy}
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      </div>
+      {buses.length === 0 ? (
+        <p>Loading bus data...</p>
+      ) : (
+        <div style={{ height: "600px", width: "100%" }}>
+          <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            {filteredBuses.map((bus) => (
+              <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
+                <Popup>
+                  Internal ID: {bus.fleet_number}<br />
+                  Route: {bus.route}<br />
+                  Occupancy: {bus.occupancy}
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+      )}
       <FleetNumberChart fleetNumberMap={fleetNumberMap} />
     </div>
   );
