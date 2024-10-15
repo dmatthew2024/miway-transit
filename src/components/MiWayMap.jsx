@@ -6,7 +6,13 @@ import axios from 'axios';
 import protobuf from 'protobufjs';
 import FleetNumberChart from './FleetNumberChart';
 
-// ... (keep the existing icon fix code)
+// Fix for default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
@@ -15,7 +21,37 @@ const MiWayMap = ({ searchTerm }) => {
 
   useEffect(() => {
     const fetchBusData = async () => {
-      // ... (keep the existing fetchBusData function)
+      try {
+        const root = await protobuf.load('/proto/gtfs-realtime.proto');
+        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+
+        const response = await axios.get('/.netlify/functions/proxy', {
+          responseType: 'arraybuffer'
+        });
+
+        const message = FeedMessage.decode(new Uint8Array(response.data));
+        const object = FeedMessage.toObject(message, {
+          enums: String,
+          longs: String,
+          defaults: true,
+          arrays: true,
+          objects: true
+        });
+
+        const vehiclePositions = object.entity.map(entity => ({
+          fleet_number: entity.vehicle.vehicle.id,
+          route: entity.vehicle.trip.routeId,
+          latitude: entity.vehicle.position.latitude,
+          longitude: entity.vehicle.position.longitude,
+          occupancy: entity.vehicle.occupancyStatus || 'Unknown'
+        }));
+
+        setBuses(vehiclePositions);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching bus data:', error);
+        setError(`Failed to fetch bus data: ${error.message}`);
+      }
     };
 
     const fetchTransseeData = async () => {
@@ -45,6 +81,7 @@ const MiWayMap = ({ searchTerm }) => {
         setFleetNumberMap(fleetMap);
       } catch (error) {
         console.error('Error fetching Transsee data:', error);
+        setError(`Failed to fetch Transsee data: ${error.message}`);
       }
     };
 
@@ -52,15 +89,20 @@ const MiWayMap = ({ searchTerm }) => {
     fetchTransseeData();
 
     const interval = setInterval(fetchBusData, 30000);
-    const transsseeInterval = setInterval(fetchTransseeData, 300000);
 
     return () => {
       clearInterval(interval);
-      clearInterval(transsseeInterval);
     };
   }, []);
 
-  // ... (keep the existing filteredBuses logic)
+  const filteredBuses = buses.filter(bus => {
+    if (!searchTerm) return true;
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    return (
+      bus.fleet_number.toString().toLowerCase().includes(lowerSearchTerm) || 
+      bus.route.toString().toLowerCase().includes(lowerSearchTerm)
+    );
+  });
 
   return (
     <div>
