@@ -65,9 +65,12 @@ const MiWayMap = ({ searchTerm }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter buses based on search term
+  // Filter buses based on search term (fleet number or route)
   const filteredBuses = buses.filter(bus => 
-    searchTerm ? bus.route.toString() === searchTerm : true
+    searchTerm
+      ? bus.fleet_number.toString().includes(searchTerm) || 
+        bus.route.toString().includes(searchTerm)
+      : true
   );
 
   return (
