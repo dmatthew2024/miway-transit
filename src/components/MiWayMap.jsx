@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -44,6 +45,17 @@ const MiWayMap = ({ searchTerm }) => {
     );
   });
 
+  // Prepare data for the chart
+  const chartData = filteredVehicles.reduce((acc, vehicle) => {
+    const routeIndex = acc.findIndex(item => item.Route === vehicle.Route);
+    if (routeIndex > -1) {
+      acc[routeIndex].count += 1;
+    } else {
+      acc.push({ Route: vehicle.Route, count: 1 });
+    }
+    return acc;
+  }, []);
+
   return (
     <div className="container mx-auto px-4">
       <h1 className="text-4xl font-bold mb-4">MiWay Transit Tracker</h1>
@@ -69,6 +81,20 @@ const MiWayMap = ({ searchTerm }) => {
                 </Marker>
               ))}
             </MapContainer>
+          </div>
+
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-4">Fleet Number and Route Chart</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="Route" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="count" fill="#8884d8" name="Number of Buses" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
           <div className="mt-8">
