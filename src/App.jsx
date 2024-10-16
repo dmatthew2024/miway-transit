@@ -8,9 +8,10 @@ function App() {
     <div className="App">
       <input
         type="text"
+        placeholder="Search for a bus or route"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        placeholder="Enter search term"
+        className="mb-4 p-2 border rounded"
       />
       <MiWayMap searchTerm={searchTerm} />
     </div>
