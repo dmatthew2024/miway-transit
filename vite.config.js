@@ -1,20 +1,15 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  build: {
-    sourcemap: true,
-    outDir: 'dist', // Explicitly set the output directory
-  },
   server: {
-    port: 5173,
     proxy: {
-      '/.netlify/functions': {
+      '/.netlify': {
         target: 'http://localhost:8888',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/.netlify\/functions/, ''),
       },
     },
   },
-});
+})
