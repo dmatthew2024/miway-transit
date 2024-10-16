@@ -39,7 +39,6 @@ const MiWayMap = ({ searchTerm }) => {
     if (!searchTerm) return true;
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
     return (
-      vehicle.id.toString().toLowerCase().includes(lowerSearchTerm) ||
       vehicle.Bus.toString().toLowerCase().includes(lowerSearchTerm) ||
       vehicle.Route.toString().toLowerCase().includes(lowerSearchTerm)
     );
@@ -61,12 +60,11 @@ const MiWayMap = ({ searchTerm }) => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
               {filteredVehicles.map((vehicle) => (
-                <Marker key={vehicle.id} position={[vehicle.Lat, vehicle.Lon]}>
+                <Marker key={vehicle.Bus} position={[vehicle.Lat, vehicle.Lon]}>
                   <Popup>
-                    ID: {vehicle.id}<br />
                     Bus Number: {vehicle.Bus}<br />
                     Route: {vehicle.Route}<br />
-                    Model: {vehicle.Model}
+                    Status: {vehicle.Status}
                   </Popup>
                 </Marker>
               ))}
@@ -78,8 +76,8 @@ const MiWayMap = ({ searchTerm }) => {
             {filteredVehicles.length > 0 ? (
               <ul className="list-disc pl-5">
                 {filteredVehicles.map((vehicle) => (
-                  <li key={vehicle.id}>
-                    Bus Number: {vehicle.Bus}, Route: {vehicle.Route}, Model: {vehicle.Model}
+                  <li key={vehicle.Bus}>
+                    Bus Number: {vehicle.Bus}, Route: {vehicle.Route}, Status: {vehicle.Status}
                   </li>
                 ))}
               </ul>
