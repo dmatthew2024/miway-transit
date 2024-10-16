@@ -22,7 +22,7 @@ const MiWayMap = ({ searchTerm }) => {
       try {
         const response = await axios.get('/.netlify/functions/transitProxy');
         console.log('Received transit data:', response.data);
-        setVehicles(response.data);
+        setVehicles(Array.isArray(response.data) ? response.data : []);
         setError(null);
       } catch (error) {
         console.error('Error fetching transit data:', error);
@@ -36,14 +36,16 @@ const MiWayMap = ({ searchTerm }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredVehicles = vehicles.filter(vehicle => {
+  const filteredVehicles = Array.isArray(vehicles) ? vehicles.filter(vehicle => {
     if (!searchTerm) return true;
-    const trimmedSearchTerm = searchTerm.trim();
+    const trimmedSearchTerm = searchTerm.trim().toLowerCase();
     return (
-      vehicle.Bus === trimmedSearchTerm ||
-      vehicle.Route === trimmedSearchTerm
+      vehicle.Bus?.toString().toLowerCase() === trimmedSearchTerm ||
+      vehicle.Route?.toString().toLowerCase() === trimmedSearchTerm
     );
-  });
+  }) : [];
+
+  console.log('Filtered vehicles:', filteredVehicles);
 
   // Prepare data for the chart
   const chartData = filteredVehicles.reduce((acc, vehicle) => {
@@ -108,7 +110,7 @@ const MiWayMap = ({ searchTerm }) => {
                 ))}
               </ul>
             ) : (
-              <p>No exact matches found for the given search term.</p>
+              <p>No vehicles match the search criteria.</p>
             )}
           </div>
         </>
