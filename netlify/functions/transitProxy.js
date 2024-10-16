@@ -2,7 +2,9 @@ const axios = require('axios');
 
 exports.handler = async function(event, context) {
   try {
-    const response = await axios.get('https://transit55.ca/mississauga/map/data.json');
+    const timestamp = Date.now();
+    const response = await axios.get(`https://transit55.ca/mississauga/map/data.json?${timestamp}`);
+    console.log('Transit data received:', response.data);
     return {
       statusCode: 200,
       body: JSON.stringify(response.data)

@@ -20,6 +20,7 @@ const MiWayMap = ({ searchTerm }) => {
     const fetchTransitData = async () => {
       try {
         const response = await axios.get('/.netlify/functions/transitProxy');
+        console.log('Received transit data:', response.data);
         setVehicles(response.data);
         setError(null);
       } catch (error) {
@@ -71,6 +72,16 @@ const MiWayMap = ({ searchTerm }) => {
           </MapContainer>
         </div>
       )}
+      <div>
+        <h2>Fleet Number Mapping</h2>
+        <ul>
+          {filteredVehicles.map((vehicle) => (
+            <li key={vehicle.id}>
+              Internal ID: {vehicle.id}, Fleet Number: {vehicle.fleet}, Route: {vehicle.route}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 };
