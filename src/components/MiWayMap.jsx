@@ -19,11 +19,17 @@ const MiWayMap = ({ searchTerm }) => {
 
   useEffect(() => {
     const fetchTransitData = async () => {
+      console.log('Fetching transit data...');
       try {
         const response = await axios.get('/.netlify/functions/transitProxy');
         console.log('Received transit data:', response.data);
-        setVehicles(Array.isArray(response.data) ? response.data : []);
-        setError(null);
+        if (Array.isArray(response.data)) {
+          setVehicles(response.data);
+          setError(null);
+        } else {
+          console.error('Received data is not an array:', response.data);
+          setError('Received invalid data format');
+        }
       } catch (error) {
         console.error('Error fetching transit data:', error);
         setError(`Failed to fetch transit data: ${error.message}`);
@@ -36,14 +42,16 @@ const MiWayMap = ({ searchTerm }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredVehicles = Array.isArray(vehicles) ? vehicles.filter(vehicle => {
+  console.log('Current vehicles state:', vehicles);
+
+  const filteredVehicles = vehicles.filter(vehicle => {
     if (!searchTerm) return true;
     const trimmedSearchTerm = searchTerm.trim().toLowerCase();
     return (
       vehicle.Bus?.toString().toLowerCase() === trimmedSearchTerm ||
       vehicle.Route?.toString().toLowerCase() === trimmedSearchTerm
     );
-  }) : [];
+  });
 
   console.log('Filtered vehicles:', filteredVehicles);
 
@@ -64,7 +72,7 @@ const MiWayMap = ({ searchTerm }) => {
       <p className="mb-4">Search Term: {searchTerm}</p>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       {vehicles.length === 0 ? (
-        <p>Loading transit data...</p>
+        <p>Loading transit data... (Vehicles: {vehicles.length})</p>
       ) : (
         <>
           <div className="h-[600px] w-full mb-8">
