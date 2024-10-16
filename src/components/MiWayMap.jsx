@@ -103,20 +103,23 @@ const MiWayMap = ({ searchTerm }) => {
       <h1 className="text-4xl font-bold mb-4">MiWay Transit Tracker</h1>
       <p className="mb-4">Search Term: {searchTerm}</p>
       {error && <p className="text-red-500 mb-4">{error}</p>}
+      
+      {/* Map Container */}
+      <div className="h-[400px] w-full mb-8" style={{ border: '1px solid #ccc' }}>
+        <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          <MapUpdater vehicles={vehicles} />
+        </MapContainer>
+      </div>
+
+      {/* Chart and Fleet Number Mapping */}
       {vehicles.length === 0 ? (
         <p>Loading transit data... (Vehicles: {vehicles.length})</p>
       ) : (
         <>
-          <div className="h-[600px] w-full mb-8">
-            <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              <MapUpdater vehicles={filteredVehicles} />
-            </MapContainer>
-          </div>
-
           <div className="mt-8">
             <h2 className="text-2xl font-bold mb-4">Fleet Number and Route Chart</h2>
             <ResponsiveContainer width="100%" height={300}>
