@@ -6,6 +6,7 @@ function App() {
 
   return (
     <div className="App">
+      <h1>MiWay Transit Tracker</h1>
       <input
         type="text"
         placeholder="Search for a bus or route"
