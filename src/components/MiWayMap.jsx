@@ -18,17 +18,33 @@ const MapUpdater = ({ vehicles }) => {
   const map = useMap();
 
   useEffect(() => {
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Marker) {
-        map.removeLayer(layer);
+    const markers = {};
+
+    vehicles.forEach((vehicle) => {
+      const position = [vehicle.Lat, vehicle.Lon];
+      
+      if (markers[vehicle.Bus]) {
+        markers[vehicle.Bus].setLatLng(position);
+      } else {
+        markers[vehicle.Bus] = L.marker(position)
+          .addTo(map)
+          .bindPopup(`Bus Number: ${vehicle.Bus}<br>Route: ${vehicle.Route}<br>Status: ${vehicle.Status}`);
       }
     });
 
-    vehicles.forEach((vehicle) => {
-      L.marker([vehicle.Lat, vehicle.Lon])
-        .addTo(map)
-        .bindPopup(`Bus Number: ${vehicle.Bus}<br>Route: ${vehicle.Route}<br>Status: ${vehicle.Status}`);
+    // Remove markers for buses that are no longer in the data
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Marker) {
+        const busNumber = layer.getPopup().getContent().split('<br>')[0].split(': ')[1];
+        if (!vehicles.some(v => v.Bus.toString() === busNumber)) {
+          map.removeLayer(layer);
+        }
+      }
     });
+
+    return () => {
+      Object.values(markers).forEach(marker => map.removeLayer(marker));
+    };
   }, [map, vehicles]);
 
   return null;
