@@ -1,44 +1,67 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// ... (keep the existing L.Icon.Default code)
+// Fix for default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// This component will handle map updates
+const MapUpdater = ({ vehicles }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Marker) {
+        map.removeLayer(layer);
+      }
+    });
+
+    vehicles.forEach((vehicle) => {
+      L.marker([vehicle.Lat, vehicle.Lon])
+        .addTo(map)
+        .bindPopup(`Bus Number: ${vehicle.Bus}<br>Route: ${vehicle.Route}<br>Status: ${vehicle.Status}`);
+    });
+  }, [map, vehicles]);
+
+  return null;
+};
 
 const MiWayMap = ({ searchTerm }) => {
   const [vehicles, setVehicles] = useState([]);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchTransitData = async () => {
-      console.log('Fetching transit data...');
-      try {
-        const response = await axios.get('/.netlify/functions/transitProxy');
-        console.log('Received transit data:', response.data);
-        if (typeof response.data === 'object' && response.data !== null) {
-          // Convert object to array
-          const vehiclesArray = Object.values(response.data);
-          setVehicles(vehiclesArray);
-          setError(null);
-        } else {
-          console.error('Received data is not an object:', response.data);
-          setError('Received invalid data format');
-        }
-      } catch (error) {
-        console.error('Error fetching transit data:', error);
-        setError(`Failed to fetch transit data: ${error.message}`);
+  const fetchTransitData = async () => {
+    console.log('Fetching transit data...');
+    try {
+      const response = await axios.get('/.netlify/functions/transitProxy');
+      console.log('Received transit data:', response.data);
+      if (typeof response.data === 'object' && response.data !== null) {
+        const vehiclesArray = Object.values(response.data);
+        setVehicles(vehiclesArray);
+        setError(null);
+      } else {
+        console.error('Received data is not an object:', response.data);
+        setError('Received invalid data format');
       }
-    };
+    } catch (error) {
+      console.error('Error fetching transit data:', error);
+      setError(`Failed to fetch transit data: ${error.message}`);
+    }
+  };
 
+  useEffect(() => {
     fetchTransitData();
     const interval = setInterval(fetchTransitData, 15000);
-
     return () => clearInterval(interval);
   }, []);
-
-  console.log('Current vehicles state:', vehicles);
 
   const filteredVehicles = vehicles.filter(vehicle => {
     if (!searchTerm) return true;
@@ -49,9 +72,6 @@ const MiWayMap = ({ searchTerm }) => {
     );
   });
 
-  console.log('Filtered vehicles:', filteredVehicles);
-
-  // Prepare data for the chart
   const chartData = filteredVehicles.reduce((acc, vehicle) => {
     const routeIndex = acc.findIndex(item => item.Route === vehicle.Route);
     if (routeIndex > -1) {
@@ -77,15 +97,7 @@ const MiWayMap = ({ searchTerm }) => {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
-              {filteredVehicles.map((vehicle) => (
-                <Marker key={vehicle.Bus} position={[vehicle.Lat, vehicle.Lon]}>
-                  <Popup>
-                    Bus Number: {vehicle.Bus}<br />
-                    Route: {vehicle.Route}<br />
-                    Status: {vehicle.Status}
-                  </Popup>
-                </Marker>
-              ))}
+              <MapUpdater vehicles={filteredVehicles} />
             </MapContainer>
           </div>
 
