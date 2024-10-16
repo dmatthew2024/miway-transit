@@ -38,10 +38,10 @@ const MiWayMap = ({ searchTerm }) => {
 
   const filteredVehicles = vehicles.filter(vehicle => {
     if (!searchTerm) return true;
-    const trimmedSearchTerm = searchTerm.trim().toLowerCase();
+    const trimmedSearchTerm = searchTerm.trim();
     return (
-      vehicle.Bus.toString().toLowerCase() === trimmedSearchTerm ||
-      vehicle.Route.toString().toLowerCase() === trimmedSearchTerm
+      vehicle.Bus === trimmedSearchTerm ||
+      vehicle.Route === trimmedSearchTerm
     );
   });
 
