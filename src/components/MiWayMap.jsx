@@ -3,8 +3,6 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
-import protobuf from 'protobufjs';
-import FleetNumberChart from './FleetNumberChart';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -15,92 +13,34 @@ L.Icon.Default.mergeOptions({
 });
 
 const MiWayMap = ({ searchTerm }) => {
-  const [buses, setBuses] = useState([]);
-  const [fleetNumberMap, setFleetNumberMap] = useState({});
+  const [vehicles, setVehicles] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchBusData = async () => {
+    const fetchTransitData = async () => {
       try {
-        const root = await protobuf.load('/proto/gtfs-realtime.proto');
-        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
-
-        const response = await axios.get('/.netlify/functions/proxy', {
-          responseType: 'arraybuffer'
-        });
-
-        const message = FeedMessage.decode(new Uint8Array(response.data));
-        const object = FeedMessage.toObject(message, {
-          enums: String,
-          longs: String,
-          defaults: true,
-          arrays: true,
-          objects: true
-        });
-
-        const vehiclePositions = object.entity.map(entity => ({
-          fleet_number: entity.vehicle.vehicle.id,
-          route: entity.vehicle.trip.routeId,
-          latitude: entity.vehicle.position.latitude,
-          longitude: entity.vehicle.position.longitude,
-          occupancy: entity.vehicle.occupancyStatus || 'Unknown'
-        }));
-
-        setBuses(vehiclePositions);
+        const response = await axios.get('/.netlify/functions/transitProxy');
+        setVehicles(response.data);
         setError(null);
       } catch (error) {
-        console.error('Error fetching bus data:', error);
-        setError(`Failed to fetch bus data: ${error.message}`);
+        console.error('Error fetching transit data:', error);
+        setError(`Failed to fetch transit data: ${error.message}`);
       }
     };
 
-    const fetchTransseeData = async () => {
-      try {
-        const routes = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']; // Add all relevant route numbers
-        const fleetMap = {};
+    fetchTransitData();
+    const interval = setInterval(fetchTransitData, 30000);
 
-        for (const route of routes) {
-          const response = await axios.get(`/.netlify/functions/transseeProxy?route=${route}`);
-          const data = response.data;
-          
-          console.log(`Transsee data for route ${route}:`, data);
-
-          if (Array.isArray(data)) {
-            data.forEach(bus => {
-              if (bus && bus.id && bus.vehicle) {
-                fleetMap[bus.id] = {
-                  publicFleetNumber: bus.vehicle,
-                  route: bus.route
-                };
-              }
-            });
-          }
-        }
-
-        console.log('Final fleetMap:', fleetMap);
-        setFleetNumberMap(fleetMap);
-      } catch (error) {
-        console.error('Error fetching Transsee data:', error);
-        setError(`Failed to fetch Transsee data: ${error.message}`);
-      }
-    };
-
-    fetchBusData();
-    fetchTransseeData();
-
-    const interval = setInterval(fetchBusData, 30000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
 
-  const filteredBuses = buses.filter(bus => {
+  const filteredVehicles = vehicles.filter(vehicle => {
     if (!searchTerm) return true;
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
     return (
-      bus.fleet_number.toString().toLowerCase().includes(lowerSearchTerm) || 
-      bus.route.toString().toLowerCase().includes(lowerSearchTerm)
+      vehicle.id.toString().toLowerCase().includes(lowerSearchTerm) ||
+      vehicle.fleet.toString().toLowerCase().includes(lowerSearchTerm) ||
+      vehicle.route.toString().toLowerCase().includes(lowerSearchTerm)
     );
   });
 
@@ -109,8 +49,8 @@ const MiWayMap = ({ searchTerm }) => {
       <h1>MiWay Transit Tracker</h1>
       <p>Search Term: {searchTerm}</p>
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      {buses.length === 0 ? (
-        <p>Loading bus data...</p>
+      {vehicles.length === 0 ? (
+        <p>Loading transit data...</p>
       ) : (
         <div style={{ height: "600px", width: "100%" }}>
           <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
@@ -118,20 +58,19 @@ const MiWayMap = ({ searchTerm }) => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
-            {filteredBuses.map((bus) => (
-              <Marker key={bus.fleet_number} position={[bus.latitude, bus.longitude]}>
+            {filteredVehicles.map((vehicle) => (
+              <Marker key={vehicle.id} position={[vehicle.lat, vehicle.lon]}>
                 <Popup>
-                  Internal ID: {bus.fleet_number}<br />
-                  Route: {bus.route}<br />
-                  Occupancy: {bus.occupancy}<br />
-                  Public Fleet Number: {fleetNumberMap[bus.fleet_number]?.publicFleetNumber || 'Unknown'}
+                  ID: {vehicle.id}<br />
+                  Fleet Number: {vehicle.fleet}<br />
+                  Route: {vehicle.route}<br />
+                  Status: {vehicle.status}
                 </Popup>
               </Marker>
             ))}
           </MapContainer>
         </div>
       )}
-      <FleetNumberChart fleetNumberMap={fleetNumberMap} />
     </div>
   );
 };
