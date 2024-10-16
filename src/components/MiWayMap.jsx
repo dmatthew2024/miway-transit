@@ -30,7 +30,7 @@ const MiWayMap = ({ searchTerm }) => {
     };
 
     fetchTransitData();
-    const interval = setInterval(fetchTransitData, 30000);
+    const interval = setInterval(fetchTransitData, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -40,48 +40,55 @@ const MiWayMap = ({ searchTerm }) => {
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
     return (
       vehicle.id.toString().toLowerCase().includes(lowerSearchTerm) ||
-      vehicle.fleet.toString().toLowerCase().includes(lowerSearchTerm) ||
-      vehicle.route.toString().toLowerCase().includes(lowerSearchTerm)
+      vehicle.Bus.toString().toLowerCase().includes(lowerSearchTerm) ||
+      vehicle.Route.toString().toLowerCase().includes(lowerSearchTerm)
     );
   });
 
   return (
-    <div>
-      <h1>MiWay Transit Tracker</h1>
-      <p>Search Term: {searchTerm}</p>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div className="container mx-auto px-4">
+      <h1 className="text-4xl font-bold mb-4">MiWay Transit Tracker</h1>
+      <p className="mb-4">Search Term: {searchTerm}</p>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
       {vehicles.length === 0 ? (
         <p>Loading transit data...</p>
       ) : (
-        <div style={{ height: "600px", width: "100%" }}>
-          <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-            {filteredVehicles.map((vehicle) => (
-              <Marker key={vehicle.id} position={[vehicle.lat, vehicle.lon]}>
-                <Popup>
-                  ID: {vehicle.id}<br />
-                  Fleet Number: {vehicle.fleet}<br />
-                  Route: {vehicle.route}<br />
-                  Status: {vehicle.status}
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-        </div>
+        <>
+          <div className="h-[600px] w-full mb-8">
+            <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: "100%", width: "100%" }}>
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              {filteredVehicles.map((vehicle) => (
+                <Marker key={vehicle.id} position={[vehicle.Lat, vehicle.Lon]}>
+                  <Popup>
+                    ID: {vehicle.id}<br />
+                    Bus Number: {vehicle.Bus}<br />
+                    Route: {vehicle.Route}<br />
+                    Model: {vehicle.Model}
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+          </div>
+
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-4">Fleet Number Mapping</h2>
+            {filteredVehicles.length > 0 ? (
+              <ul className="list-disc pl-5">
+                {filteredVehicles.map((vehicle) => (
+                  <li key={vehicle.id}>
+                    Bus Number: {vehicle.Bus}, Route: {vehicle.Route}, Model: {vehicle.Model}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No fleet number mapping data available.</p>
+            )}
+          </div>
+        </>
       )}
-      <div>
-        <h2>Fleet Number Mapping</h2>
-        <ul>
-          {filteredVehicles.map((vehicle) => (
-            <li key={vehicle.id}>
-              Internal ID: {vehicle.id}, Fleet Number: {vehicle.fleet}, Route: {vehicle.route}
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 };
