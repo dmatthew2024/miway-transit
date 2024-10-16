@@ -38,10 +38,10 @@ const MiWayMap = ({ searchTerm }) => {
 
   const filteredVehicles = vehicles.filter(vehicle => {
     if (!searchTerm) return true;
-    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    const trimmedSearchTerm = searchTerm.trim().toLowerCase();
     return (
-      vehicle.Bus.toString().toLowerCase().includes(lowerSearchTerm) ||
-      vehicle.Route.toString().toLowerCase().includes(lowerSearchTerm)
+      vehicle.Bus.toString().toLowerCase() === trimmedSearchTerm ||
+      vehicle.Route.toString().toLowerCase() === trimmedSearchTerm
     );
   });
 
@@ -108,7 +108,7 @@ const MiWayMap = ({ searchTerm }) => {
                 ))}
               </ul>
             ) : (
-              <p>No fleet number mapping data available.</p>
+              <p>No exact matches found for the given search term.</p>
             )}
           </div>
         </>
