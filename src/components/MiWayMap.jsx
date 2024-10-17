@@ -1,16 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import React, { useEffect, useState, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 
-// Fix for default marker icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// ... (keep the existing marker icon fix)
+
+const RouteLayer = ({ routeData }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (routeData) {
+      const bounds = L.latLngBounds(routeData);
+      map.fitBounds(bounds);
+    }
+  }, [map, routeData]);
+
+  if (!routeData) return null;
+
+  return (
+    <Polyline
+      positions={routeData}
+      color="blue"
+      weight={3}
+      opacity={0.7}
+    />
+  );
+};
 
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
@@ -20,6 +36,7 @@ const MiWayMap = ({ searchTerm }) => {
   const fetchBusData = async () => {
     try {
       const response = await axios.get('/.netlify/functions/transitProxy');
+      console.log('Received bus data:', response.data);
       if (response.data && typeof response.data === 'object') {
         const parsedBuses = Object.values(response.data).map(bus => ({
           ...bus,
@@ -36,15 +53,18 @@ const MiWayMap = ({ searchTerm }) => {
     }
   };
 
-  const fetchRouteData = async (tripId) => {
+  const fetchRouteData = useCallback(async (tripId) => {
     try {
+      console.log('Fetching route data for trip:', tripId);
       const response = await axios.get(`/.netlify/functions/routeProxy?id=${tripId}`);
-      return response.data;
+      console.log('Received route data:', response.data);
+      return response.data.coordinates;
     } catch (err) {
       console.error('Error fetching route data:', err);
+      setError('Failed to fetch route data');
       return null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchBusData();
@@ -59,9 +79,16 @@ const MiWayMap = ({ searchTerm }) => {
   );
 
   const handleMarkerClick = async (bus) => {
-    const routeData = await fetchRouteData(bus.Trip);
-    if (routeData) {
-      setSelectedRoute(routeData.coordinates);
+    console.log('Marker clicked for bus:', bus);
+    if (bus.Trip) {
+      const routeData = await fetchRouteData(bus.Trip);
+      if (routeData) {
+        console.log('Setting route data:', routeData);
+        setSelectedRoute(routeData);
+      }
+    } else {
+      console.log('No Trip ID available for this bus');
+      setError('No route information available for this bus');
     }
   };
 
@@ -87,18 +114,12 @@ const MiWayMap = ({ searchTerm }) => {
                 <p><strong>Fleet Number:</strong> {bus.Bus}</p>
                 <p><strong>Route:</strong> {bus.Route}</p>
                 <p><strong>Model:</strong> {bus.Model}</p>
+                <p><strong>Trip ID:</strong> {bus.Trip || 'N/A'}</p>
               </div>
             </Popup>
           </Marker>
         ))}
-        {selectedRoute && (
-          <Polyline
-            positions={selectedRoute}
-            color="blue"
-            weight={3}
-            opacity={0.7}
-          />
-        )}
+        <RouteLayer routeData={selectedRoute} />
       </MapContainer>
     </div>
   );
