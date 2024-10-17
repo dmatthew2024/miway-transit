@@ -45,7 +45,6 @@ const MiWayMap = ({ searchTerm }) => {
 
   return (
     <div className="map-container" style={{ height: '600px', width: '100%' }}>
-      <h1>MiWay Transit Tracker</h1>
       {error && <p className="error-message">Error: {error}</p>}
       <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: '100%', width: '100%' }}>
         <TileLayer
