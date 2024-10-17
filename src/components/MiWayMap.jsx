@@ -23,9 +23,10 @@ const MiWayMap = ({ searchTerm }) => {
       if (response.data && typeof response.data === 'object') {
         const parsedBuses = Object.values(response.data).map(bus => ({
           ...bus,
-          Model: bus.Model.replace(/"/g, '').trim() // Remove quotes and trim whitespace
+          Model: bus.Model ? bus.Model.replace(/"/g, '').trim() : 'N/A'
         }));
         setBuses(parsedBuses);
+        setError(null);
       } else {
         setError('Invalid data format received');
       }
