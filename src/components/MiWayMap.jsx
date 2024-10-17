@@ -19,6 +19,7 @@ const MiWayMap = ({ searchTerm }) => {
   const fetchBusData = async () => {
     try {
       const response = await axios.get('/.netlify/functions/transitProxy');
+      console.log('Received bus data:', response.data);
       if (response.data && typeof response.data === 'object') {
         setBuses(Object.values(response.data));
       } else {
@@ -26,7 +27,7 @@ const MiWayMap = ({ searchTerm }) => {
       }
     } catch (err) {
       setError('Failed to fetch bus data');
-      console.error(err);
+      console.error('Error fetching bus data:', err);
     }
   };
 
@@ -38,13 +39,14 @@ const MiWayMap = ({ searchTerm }) => {
 
   const filteredBuses = buses.filter(bus => 
     !searchTerm || 
-    bus.Bus.toString().includes(searchTerm) || 
-    bus.Route.toString().includes(searchTerm)
+    bus.Bus.toString().toLowerCase().includes(searchTerm.toLowerCase()) || 
+    bus.Route.toString().toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div style={{ height: '600px', width: '100%' }}>
-      {error && <p>Error: {error}</p>}
+    <div className="map-container" style={{ height: '600px', width: '100%' }}>
+      <h1>MiWay Transit Tracker</h1>
+      {error && <p className="error-message">Error: {error}</p>}
       <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -53,9 +55,15 @@ const MiWayMap = ({ searchTerm }) => {
         {filteredBuses.map(bus => (
           <Marker key={bus.Bus} position={[bus.Lat, bus.Lon]}>
             <Popup>
-              Fleet Number: {bus.Bus}<br />
-              Route: {bus.Route}<br />
-              Capacity: {bus.Capacity || 'N/A'}
+              <div className="bus-info">
+                <h2>Bus Information</h2>
+                <p><strong>Fleet Number:</strong> {bus.Bus}</p>
+                <p><strong>Route:</strong> {bus.Route}</p>
+                <p><strong>Manufacturer:</strong> {bus.Manufacturer || 'N/A'}</p>
+                <p><strong>Year:</strong> {bus.Year || 'N/A'}</p>
+                <p><strong>Status:</strong> {bus.OnTime ? 'On Time' : 'Delayed'}</p>
+                <p><strong>Capacity:</strong> {bus.Capacity || 'N/A'}</p>
+              </div>
             </Popup>
           </Marker>
         ))}
