@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
@@ -15,11 +15,11 @@ L.Icon.Default.mergeOptions({
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
   const [error, setError] = useState(null);
+  const [selectedRoute, setSelectedRoute] = useState(null);
 
   const fetchBusData = async () => {
     try {
       const response = await axios.get('/.netlify/functions/transitProxy');
-      console.log('Received bus data:', response.data);
       if (response.data && typeof response.data === 'object') {
         const parsedBuses = Object.values(response.data).map(bus => ({
           ...bus,
@@ -36,6 +36,16 @@ const MiWayMap = ({ searchTerm }) => {
     }
   };
 
+  const fetchRouteData = async (tripId) => {
+    try {
+      const response = await axios.get(`/.netlify/functions/routeProxy?id=${tripId}`);
+      return response.data;
+    } catch (err) {
+      console.error('Error fetching route data:', err);
+      return null;
+    }
+  };
+
   useEffect(() => {
     fetchBusData();
     const interval = setInterval(fetchBusData, 15000);
@@ -48,6 +58,13 @@ const MiWayMap = ({ searchTerm }) => {
     bus.Route.toString().toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleMarkerClick = async (bus) => {
+    const routeData = await fetchRouteData(bus.Trip);
+    if (routeData) {
+      setSelectedRoute(routeData.coordinates);
+    }
+  };
+
   return (
     <div className="map-container" style={{ height: '600px', width: '100%' }}>
       {error && <p className="error-message">Error: {error}</p>}
@@ -57,7 +74,13 @@ const MiWayMap = ({ searchTerm }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         {filteredBuses.map(bus => (
-          <Marker key={bus.Bus} position={[bus.Lat, bus.Lon]}>
+          <Marker 
+            key={bus.Bus} 
+            position={[bus.Lat, bus.Lon]}
+            eventHandlers={{
+              click: () => handleMarkerClick(bus),
+            }}
+          >
             <Popup>
               <div className="bus-info">
                 <h2>Bus Information</h2>
@@ -68,6 +91,14 @@ const MiWayMap = ({ searchTerm }) => {
             </Popup>
           </Marker>
         ))}
+        {selectedRoute && (
+          <Polyline
+            positions={selectedRoute}
+            color="blue"
+            weight={3}
+            opacity={0.7}
+          />
+        )}
       </MapContainer>
     </div>
   );
