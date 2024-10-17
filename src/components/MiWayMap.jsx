@@ -21,7 +21,11 @@ const MiWayMap = ({ searchTerm }) => {
       const response = await axios.get('/.netlify/functions/transitProxy');
       console.log('Received bus data:', response.data);
       if (response.data && typeof response.data === 'object') {
-        setBuses(Object.values(response.data));
+        const parsedBuses = Object.values(response.data).map(bus => ({
+          ...bus,
+          Model: bus.Model.replace(/"/g, '').trim() // Remove quotes and trim whitespace
+        }));
+        setBuses(parsedBuses);
       } else {
         setError('Invalid data format received');
       }
@@ -58,7 +62,7 @@ const MiWayMap = ({ searchTerm }) => {
                 <h2>Bus Information</h2>
                 <p><strong>Fleet Number:</strong> {bus.Bus}</p>
                 <p><strong>Route:</strong> {bus.Route}</p>
-                <p><strong>Capacity:</strong> {bus.Capacity || 'N/A'}</p>
+                <p><strong>Model:</strong> {bus.Model}</p>
               </div>
             </Popup>
           </Marker>
