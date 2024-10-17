@@ -59,9 +59,6 @@ const MiWayMap = ({ searchTerm }) => {
                 <h2>Bus Information</h2>
                 <p><strong>Fleet Number:</strong> {bus.Bus}</p>
                 <p><strong>Route:</strong> {bus.Route}</p>
-                <p><strong>Manufacturer:</strong> {bus.Manufacturer || 'N/A'}</p>
-                <p><strong>Year:</strong> {bus.Year || 'N/A'}</p>
-                <p><strong>Status:</strong> {bus.OnTime ? 'On Time' : 'Delayed'}</p>
                 <p><strong>Capacity:</strong> {bus.Capacity || 'N/A'}</p>
               </div>
             </Popup>
