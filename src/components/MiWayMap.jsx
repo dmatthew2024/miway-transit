@@ -65,12 +65,22 @@ const MiWayMap = ({ searchTerm }) => {
   }, [filteredBuses]);
 
   return (
-    <div className="map-container" style={{ height: '600px', width: '100%' }}>
+    <div className="map-container" style={{ height: '600px', width: '100%', position: 'relative' }}>
       {error && <p className="error-message">Error: {error}</p>}
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000, background: 'white', padding: 10 }}>
-        <p>Search Term: {searchTerm}</p>
-        <p>Debug Info:</p>
-        <pre>{debugInfo}</pre>
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        right: '10px',
+        zIndex: 1000,
+        background: 'rgba(255, 255, 255, 0.8)',
+        padding: '10px',
+        borderRadius: '5px',
+        maxWidth: '200px',
+        fontSize: '12px'
+      }}>
+        <p><strong>Search Term:</strong> {searchTerm}</p>
+        <p><strong>Debug Info:</strong></p>
+        <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{debugInfo}</pre>
       </div>
       <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: '100%', width: '100%' }}>
         <TileLayer
