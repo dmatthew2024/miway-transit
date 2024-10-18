@@ -20,11 +20,14 @@ const MiWayMap = ({ searchTerm }) => {
     try {
       const response = await axios.get('/.netlify/functions/transitProxy');
       if (response.data && typeof response.data === 'object') {
-        const parsedBuses = Object.values(response.data).map(bus => ({
-          ...bus,
+        const parsedBuses = Object.entries(response.data).map(([key, bus]) => ({
+          id: key,
+          Bus: bus.Bus ? bus.Bus.toString().trim() : 'N/A',
+          Route: bus.Route ? bus.Route.toString().trim() : 'N/A',
           Model: bus.Model ? bus.Model.replace(/"/g, '').trim() : 'N/A',
-          Route: bus.Route ? bus.Route.toString().trim() : 'N/A'
-        }));
+          Lat: parseFloat(bus.Lat) || 0,
+          Lon: parseFloat(bus.Lon) || 0
+        })).filter(bus => bus.Lat !== 0 && bus.Lon !== 0);
         setBuses(parsedBuses);
         setError(null);
       } else {
@@ -46,14 +49,11 @@ const MiWayMap = ({ searchTerm }) => {
     if (!searchTerm) return true;
     const trimmedSearchTerm = searchTerm.trim();
     
-    // Convert both to strings and trim for comparison
-    const busRoute = bus.Route.toString().trim();
-    
     // Exact match for route number
-    if (busRoute === trimmedSearchTerm) return true;
+    if (bus.Route === trimmedSearchTerm) return true;
     
     // If searchTerm is not a number, allow partial match for bus number (fleet ID)
-    if (isNaN(trimmedSearchTerm) && bus.Bus.toString().includes(trimmedSearchTerm)) return true;
+    if (isNaN(trimmedSearchTerm) && bus.Bus.includes(trimmedSearchTerm)) return true;
     
     return false;
   });
@@ -67,13 +67,13 @@ const MiWayMap = ({ searchTerm }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         {filteredBuses.map(bus => (
-          <Marker key={bus.Bus} position={[bus.Lat, bus.Lon]}>
+          <Marker key={bus.id} position={[bus.Lat, bus.Lon]}>
             <Popup>
               <div className="bus-info">
                 <h2>Bus Information</h2>
-                <p><strong>Fleet Number:</strong> {bus.Bus || 'N/A'}</p>
-                <p><strong>Route:</strong> {bus.Route || 'N/A'}</p>
-                <p><strong>Model:</strong> {bus.Model || 'N/A'}</p>
+                <p><strong>Fleet Number:</strong> {bus.Bus}</p>
+                <p><strong>Route:</strong> {bus.Route}</p>
+                <p><strong>Model:</strong> {bus.Model}</p>
               </div>
             </Popup>
           </Marker>
