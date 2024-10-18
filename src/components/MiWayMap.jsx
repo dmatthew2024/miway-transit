@@ -19,6 +19,7 @@ const MiWayMap = ({ searchTerm }) => {
   const fetchBusData = async () => {
     try {
       const response = await axios.get('/.netlify/functions/transitProxy');
+      console.log('Raw API response:', response.data); // Debug log
       if (response.data && typeof response.data === 'object') {
         const parsedBuses = Object.entries(response.data).map(([key, bus]) => ({
           id: key,
@@ -28,6 +29,7 @@ const MiWayMap = ({ searchTerm }) => {
           Lat: parseFloat(bus.Lat) || 0,
           Lon: parseFloat(bus.Lon) || 0
         })).filter(bus => bus.Lat !== 0 && bus.Lon !== 0);
+        console.log('Parsed buses:', parsedBuses); // Debug log
         setBuses(parsedBuses);
         setError(null);
       } else {
@@ -50,17 +52,22 @@ const MiWayMap = ({ searchTerm }) => {
     const trimmedSearchTerm = searchTerm.trim();
     
     // Exact match for route number
-    if (bus.Route === trimmedSearchTerm) return true;
+    const routeMatch = bus.Route === trimmedSearchTerm;
     
     // If searchTerm is not a number, allow partial match for bus number (fleet ID)
-    if (isNaN(trimmedSearchTerm) && bus.Bus.includes(trimmedSearchTerm)) return true;
+    const busMatch = isNaN(trimmedSearchTerm) && bus.Bus.includes(trimmedSearchTerm);
     
-    return false;
+    console.log(`Bus ${bus.Bus}, Route ${bus.Route}, Match: ${routeMatch || busMatch}`); // Debug log
+    
+    return routeMatch || busMatch;
   });
+
+  console.log('Filtered buses:', filteredBuses); // Debug log
 
   return (
     <div className="map-container" style={{ height: '600px', width: '100%' }}>
       {error && <p className="error-message">Error: {error}</p>}
+      <p>Search Term: {searchTerm}, Filtered Buses: {filteredBuses.length}</p>
       <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
