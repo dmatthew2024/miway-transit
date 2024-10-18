@@ -15,11 +15,11 @@ L.Icon.Default.mergeOptions({
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState('');
 
   const fetchBusData = async () => {
     try {
       const response = await axios.get('/.netlify/functions/transitProxy');
-      console.log('Raw API response:', response.data); // Debug log
       if (response.data && typeof response.data === 'object') {
         const parsedBuses = Object.entries(response.data).map(([key, bus]) => ({
           id: key,
@@ -29,8 +29,8 @@ const MiWayMap = ({ searchTerm }) => {
           Lat: parseFloat(bus.Lat) || 0,
           Lon: parseFloat(bus.Lon) || 0
         })).filter(bus => bus.Lat !== 0 && bus.Lon !== 0);
-        console.log('Parsed buses:', parsedBuses); // Debug log
         setBuses(parsedBuses);
+        setDebugInfo(`Total buses: ${parsedBuses.length}`);
         setError(null);
       } else {
         setError('Invalid data format received');
@@ -49,25 +49,29 @@ const MiWayMap = ({ searchTerm }) => {
 
   const filteredBuses = buses.filter(bus => {
     if (!searchTerm) return true;
-    const trimmedSearchTerm = searchTerm.trim();
+    const trimmedSearchTerm = searchTerm.trim().toLowerCase();
     
-    // Exact match for route number
-    const routeMatch = bus.Route === trimmedSearchTerm;
+    // More lenient matching for route number
+    const routeMatch = bus.Route.toLowerCase().includes(trimmedSearchTerm);
     
-    // If searchTerm is not a number, allow partial match for bus number (fleet ID)
-    const busMatch = isNaN(trimmedSearchTerm) && bus.Bus.includes(trimmedSearchTerm);
-    
-    console.log(`Bus ${bus.Bus}, Route ${bus.Route}, Match: ${routeMatch || busMatch}`); // Debug log
+    // Partial match for bus number (fleet ID)
+    const busMatch = bus.Bus.toLowerCase().includes(trimmedSearchTerm);
     
     return routeMatch || busMatch;
   });
 
-  console.log('Filtered buses:', filteredBuses); // Debug log
+  useEffect(() => {
+    setDebugInfo(prevInfo => `${prevInfo}\nFiltered buses: ${filteredBuses.length}`);
+  }, [filteredBuses]);
 
   return (
     <div className="map-container" style={{ height: '600px', width: '100%' }}>
       {error && <p className="error-message">Error: {error}</p>}
-      <p>Search Term: {searchTerm}, Filtered Buses: {filteredBuses.length}</p>
+      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000, background: 'white', padding: 10 }}>
+        <p>Search Term: {searchTerm}</p>
+        <p>Debug Info:</p>
+        <pre>{debugInfo}</pre>
+      </div>
       <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
