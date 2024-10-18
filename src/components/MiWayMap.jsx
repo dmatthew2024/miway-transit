@@ -15,7 +15,6 @@ L.Icon.Default.mergeOptions({
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
   const [error, setError] = useState(null);
-  const [debugInfo, setDebugInfo] = useState('');
 
   const fetchBusData = async () => {
     try {
@@ -30,7 +29,6 @@ const MiWayMap = ({ searchTerm }) => {
           Lon: parseFloat(bus.Lon) || 0
         })).filter(bus => bus.Lat !== 0 && bus.Lon !== 0);
         setBuses(parsedBuses);
-        setDebugInfo(`Total buses: ${parsedBuses.length}`);
         setError(null);
       } else {
         setError('Invalid data format received');
@@ -60,28 +58,9 @@ const MiWayMap = ({ searchTerm }) => {
     return routeMatch || busMatch;
   });
 
-  useEffect(() => {
-    setDebugInfo(prevInfo => `${prevInfo}\nFiltered buses: ${filteredBuses.length}`);
-  }, [filteredBuses]);
-
   return (
-    <div className="map-container" style={{ height: '600px', width: '100%', position: 'relative' }}>
+    <div className="map-container" style={{ height: '600px', width: '100%' }}>
       {error && <p className="error-message">Error: {error}</p>}
-      <div style={{
-        position: 'absolute',
-        top: '10px',
-        right: '10px',
-        zIndex: 1000,
-        background: 'rgba(255, 255, 255, 0.8)',
-        padding: '10px',
-        borderRadius: '5px',
-        maxWidth: '200px',
-        fontSize: '12px'
-      }}>
-        <p><strong>Search Term:</strong> {searchTerm}</p>
-        <p><strong>Debug Info:</strong></p>
-        <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{debugInfo}</pre>
-      </div>
       <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
