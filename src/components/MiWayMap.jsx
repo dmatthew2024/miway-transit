@@ -7,9 +7,9 @@ import axios from 'axios';
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
 const MiWayMap = ({ searchTerm }) => {
@@ -19,7 +19,6 @@ const MiWayMap = ({ searchTerm }) => {
   const fetchBusData = async () => {
     try {
       const response = await axios.get('/.netlify/functions/transitProxy');
-      console.log('Received bus data:', response.data);
       if (response.data && typeof response.data === 'object') {
         const parsedBuses = Object.values(response.data).map(bus => ({
           ...bus,
@@ -47,8 +46,11 @@ const MiWayMap = ({ searchTerm }) => {
     if (!searchTerm) return true;
     const trimmedSearchTerm = searchTerm.trim();
     
+    // Convert both to strings and trim for comparison
+    const busRoute = bus.Route.toString().trim();
+    
     // Exact match for route number
-    if (bus.Route === trimmedSearchTerm) return true;
+    if (busRoute === trimmedSearchTerm) return true;
     
     // If searchTerm is not a number, allow partial match for bus number (fleet ID)
     if (isNaN(trimmedSearchTerm) && bus.Bus.toString().includes(trimmedSearchTerm)) return true;
