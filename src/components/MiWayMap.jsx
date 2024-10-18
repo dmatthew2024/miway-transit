@@ -23,7 +23,8 @@ const MiWayMap = ({ searchTerm }) => {
       if (response.data && typeof response.data === 'object') {
         const parsedBuses = Object.values(response.data).map(bus => ({
           ...bus,
-          Model: bus.Model ? bus.Model.replace(/"/g, '').trim() : 'N/A'
+          Model: bus.Model ? bus.Model.replace(/"/g, '').trim() : 'N/A',
+          Route: bus.Route ? bus.Route.toString().trim() : 'N/A'
         }));
         setBuses(parsedBuses);
         setError(null);
@@ -44,13 +45,13 @@ const MiWayMap = ({ searchTerm }) => {
 
   const filteredBuses = buses.filter(bus => {
     if (!searchTerm) return true;
-    const lowercaseSearchTerm = searchTerm.toLowerCase();
+    const trimmedSearchTerm = searchTerm.trim();
     
     // Exact match for route number
-    if (bus.Route.toString().toLowerCase() === lowercaseSearchTerm) return true;
+    if (bus.Route === trimmedSearchTerm) return true;
     
-    // Partial match for bus number (fleet ID)
-    if (bus.Bus.toString().toLowerCase().includes(lowercaseSearchTerm)) return true;
+    // If searchTerm is not a number, allow partial match for bus number (fleet ID)
+    if (isNaN(trimmedSearchTerm) && bus.Bus.toString().includes(trimmedSearchTerm)) return true;
     
     return false;
   });
@@ -68,9 +69,9 @@ const MiWayMap = ({ searchTerm }) => {
             <Popup>
               <div className="bus-info">
                 <h2>Bus Information</h2>
-                <p><strong>Fleet Number:</strong> {bus.Bus}</p>
-                <p><strong>Route:</strong> {bus.Route}</p>
-                <p><strong>Model:</strong> {bus.Model}</p>
+                <p><strong>Fleet Number:</strong> {bus.Bus || 'N/A'}</p>
+                <p><strong>Route:</strong> {bus.Route || 'N/A'}</p>
+                <p><strong>Model:</strong> {bus.Model || 'N/A'}</p>
               </div>
             </Popup>
           </Marker>
