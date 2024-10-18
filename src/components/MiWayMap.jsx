@@ -42,11 +42,18 @@ const MiWayMap = ({ searchTerm }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredBuses = buses.filter(bus => 
-    !searchTerm || 
-    bus.Bus.toString().toLowerCase().includes(searchTerm.toLowerCase()) || 
-    bus.Route.toString().toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBuses = buses.filter(bus => {
+    if (!searchTerm) return true;
+    const lowercaseSearchTerm = searchTerm.toLowerCase();
+    
+    // Exact match for route number
+    if (bus.Route.toString().toLowerCase() === lowercaseSearchTerm) return true;
+    
+    // Partial match for bus number (fleet ID)
+    if (bus.Bus.toString().toLowerCase().includes(lowercaseSearchTerm)) return true;
+    
+    return false;
+  });
 
   return (
     <div className="map-container" style={{ height: '600px', width: '100%' }}>
