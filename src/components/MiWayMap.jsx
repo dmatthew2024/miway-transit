@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import React, { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
@@ -15,6 +15,8 @@ L.Icon.Default.mergeOptions({
 const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
   const [error, setError] = useState(null);
+  const [selectedBus, setSelectedBus] = useState(null);
+  const busHistoryRef = useRef({});
 
   const fetchBusData = async () => {
     try {
@@ -28,6 +30,19 @@ const MiWayMap = ({ searchTerm }) => {
           Lat: parseFloat(bus.Lat) || 0,
           Lon: parseFloat(bus.Lon) || 0
         })).filter(bus => bus.Lat !== 0 && bus.Lon !== 0);
+
+        // Update bus history
+        parsedBuses.forEach(bus => {
+          if (!busHistoryRef.current[bus.id]) {
+            busHistoryRef.current[bus.id] = [];
+          }
+          busHistoryRef.current[bus.id].push([bus.Lat, bus.Lon]);
+          // Keep only the last 100 positions to limit memory usage
+          if (busHistoryRef.current[bus.id].length > 100) {
+            busHistoryRef.current[bus.id].shift();
+          }
+        });
+
         setBuses(parsedBuses);
         setError(null);
       } else {
@@ -49,14 +64,30 @@ const MiWayMap = ({ searchTerm }) => {
     if (!searchTerm) return true;
     const trimmedSearchTerm = searchTerm.trim().toLowerCase();
     
-    // More lenient matching for route number
     const routeMatch = bus.Route.toLowerCase().includes(trimmedSearchTerm);
-    
-    // Partial match for bus number (fleet ID)
     const busMatch = bus.Bus.toLowerCase().includes(trimmedSearchTerm);
     
     return routeMatch || busMatch;
   });
+
+  const handleBusClick = (busId) => {
+    setSelectedBus(busId === selectedBus ? null : busId);
+  };
+
+  const BusPath = () => {
+    const map = useMap();
+
+    useEffect(() => {
+      if (selectedBus && busHistoryRef.current[selectedBus]) {
+        const path = busHistoryRef.current[selectedBus];
+        const polyline = L.polyline(path, { color: 'red', weight: 3 }).addTo(map);
+        map.fitBounds(polyline.getBounds());
+        return () => map.removeLayer(polyline);
+      }
+    }, [selectedBus, map]);
+
+    return null;
+  };
 
   return (
     <div className="map-container" style={{ height: '600px', width: '100%' }}>
@@ -67,7 +98,13 @@ const MiWayMap = ({ searchTerm }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         {filteredBuses.map(bus => (
-          <Marker key={bus.id} position={[bus.Lat, bus.Lon]}>
+          <Marker 
+            key={bus.id} 
+            position={[bus.Lat, bus.Lon]}
+            eventHandlers={{
+              click: () => handleBusClick(bus.id),
+            }}
+          >
             <Popup>
               <div className="bus-info">
                 <h2>Bus Information</h2>
@@ -78,6 +115,7 @@ const MiWayMap = ({ searchTerm }) => {
             </Popup>
           </Marker>
         ))}
+        <BusPath />
       </MapContainer>
     </div>
   );
