@@ -16,7 +16,8 @@ const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
   const [error, setError] = useState(null);
   const [selectedBus, setSelectedBus] = useState(null);
-  const busHistoryRef = useRef({});
+  const [routePath, setRoutePath] = useState([]);
+  const mapRef = useRef(null);
 
   const fetchBusData = async () => {
     try {
@@ -31,18 +32,6 @@ const MiWayMap = ({ searchTerm }) => {
           Lon: parseFloat(bus.Lon) || 0
         })).filter(bus => bus.Lat !== 0 && bus.Lon !== 0);
 
-        // Update bus history
-        parsedBuses.forEach(bus => {
-          if (!busHistoryRef.current[bus.id]) {
-            busHistoryRef.current[bus.id] = [];
-          }
-          busHistoryRef.current[bus.id].push([bus.Lat, bus.Lon]);
-          // Keep only the last 100 positions to limit memory usage
-          if (busHistoryRef.current[bus.id].length > 100) {
-            busHistoryRef.current[bus.id].shift();
-          }
-        });
-
         setBuses(parsedBuses);
         setError(null);
       } else {
@@ -51,6 +40,22 @@ const MiWayMap = ({ searchTerm }) => {
     } catch (err) {
       setError('Failed to fetch bus data');
       console.error('Error fetching bus data:', err);
+    }
+  };
+
+  const fetchRouteData = async (routeNumber) => {
+    try {
+      const response = await axios.get('https://transit55.ca/mississauga/map/data.json');
+      const routeData = response.data.find(route => route.id === routeNumber);
+      
+      if (routeData && routeData.path) {
+        // Convert path to array of [lat, lng] coordinates
+        const coordinates = routeData.path.map(point => [point.lat, point.lon]);
+        setRoutePath(coordinates);
+      }
+    } catch (err) {
+      console.error('Error fetching route data:', err);
+      setError('Failed to fetch route data');
     }
   };
 
@@ -70,29 +75,42 @@ const MiWayMap = ({ searchTerm }) => {
     return routeMatch || busMatch;
   });
 
-  const handleBusClick = (busId) => {
-    setSelectedBus(busId === selectedBus ? null : busId);
+  const handleBusClick = async (bus) => {
+    setSelectedBus(bus.id === selectedBus ? null : bus.id);
+    if (bus.Route !== 'N/A') {
+      await fetchRouteData(bus.Route);
+    }
   };
 
-  const BusPath = () => {
+  const RouteDisplay = () => {
     const map = useMap();
 
     useEffect(() => {
-      if (selectedBus && busHistoryRef.current[selectedBus]) {
-        const path = busHistoryRef.current[selectedBus];
-        const polyline = L.polyline(path, { color: 'red', weight: 3 }).addTo(map);
-        map.fitBounds(polyline.getBounds());
-        return () => map.removeLayer(polyline);
+      if (routePath.length > 0) {
+        const bounds = L.latLngBounds(routePath);
+        map.fitBounds(bounds, { padding: [50, 50] });
       }
-    }, [selectedBus, map]);
+    }, [routePath, map]);
 
-    return null;
+    return routePath.length > 0 ? (
+      <Polyline
+        positions={routePath}
+        color="#2563eb"
+        weight={4}
+        opacity={0.8}
+      />
+    ) : null;
   };
 
   return (
-    <div className="map-container" style={{ height: '600px', width: '100%' }}>
-      {error && <p className="error-message">Error: {error}</p>}
-      <MapContainer center={[43.5890, -79.6441]} zoom={12} style={{ height: '100%', width: '100%' }}>
+    <div className="map-container h-[600px] w-full">
+      {error && <p className="text-red-500 mb-4">Error: {error}</p>}
+      <MapContainer
+        center={[43.5890, -79.6441]}
+        zoom={12}
+        className="h-full w-full"
+        ref={mapRef}
+      >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -102,12 +120,12 @@ const MiWayMap = ({ searchTerm }) => {
             key={bus.id} 
             position={[bus.Lat, bus.Lon]}
             eventHandlers={{
-              click: () => handleBusClick(bus.id),
+              click: () => handleBusClick(bus),
             }}
           >
             <Popup>
               <div className="bus-info">
-                <h2>Bus Information</h2>
+                <h2 className="text-lg font-bold mb-2">Bus Information</h2>
                 <p><strong>Fleet Number:</strong> {bus.Bus}</p>
                 <p><strong>Route:</strong> {bus.Route}</p>
                 <p><strong>Model:</strong> {bus.Model}</p>
@@ -115,7 +133,7 @@ const MiWayMap = ({ searchTerm }) => {
             </Popup>
           </Marker>
         ))}
-        <BusPath />
+        <RouteDisplay />
       </MapContainer>
     </div>
   );
