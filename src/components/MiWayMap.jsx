@@ -16,8 +16,7 @@ const MiWayMap = ({ searchTerm }) => {
   const [buses, setBuses] = useState([]);
   const [error, setError] = useState(null);
   const [selectedBus, setSelectedBus] = useState(null);
-  const busHistoryRef = useRef({});
-  const [routePath, setRoutePath] = useState([]); // New state for route path
+  const [routeCoordinates, setRouteCoordinates] = useState([]); // State for route coordinates
 
   const fetchBusData = async () => {
     try {
@@ -32,17 +31,6 @@ const MiWayMap = ({ searchTerm }) => {
           Lon: parseFloat(bus.Lon) || 0
         })).filter(bus => bus.Lat !== 0 && bus.Lon !== 0);
 
-        // Update bus history
-        parsedBuses.forEach(bus => {
-          if (!busHistoryRef.current[bus.id]) {
-            busHistoryRef.current[bus.id] = [];
-          }
-          busHistoryRef.current[bus.id].push([bus.Lat, bus.Lon]);
-          if (busHistoryRef.current[bus.id].length > 100) {
-            busHistoryRef.current[bus.id].shift();
-          }
-        });
-
         setBuses(parsedBuses);
         setError(null);
       } else {
@@ -54,15 +42,18 @@ const MiWayMap = ({ searchTerm }) => {
     }
   };
 
-  // New function to fetch route data
   const fetchRouteData = async (routeNumber) => {
     try {
-      const response = await axios.get(`https://transit55.ca/mississauga/map/?route=${routeNumber}`);
-      if (response.data && response.data.path) {
-        setRoutePath(response.data.path);
+      // Fetch route data from Transit55's API
+      const response = await axios.get(`https://transit55.ca/mississauga/map/data.json`);
+      const route = response.data.find(r => r.id === routeNumber);
+      
+      if (route && route.coordinates) {
+        setRouteCoordinates(route.coordinates.map(coord => [coord.lat, coord.lon]));
       }
     } catch (err) {
       console.error('Error fetching route data:', err);
+      setError('Failed to fetch route data');
     }
   };
 
@@ -89,28 +80,24 @@ const MiWayMap = ({ searchTerm }) => {
     }
   };
 
-  const BusPath = () => {
+  const RouteDisplay = () => {
     const map = useMap();
 
     useEffect(() => {
-      if (selectedBus && busHistoryRef.current[selectedBus]) {
-        const path = busHistoryRef.current[selectedBus];
-        const polyline = L.polyline(path, { color: 'red', weight: 3 }).addTo(map);
-        map.fitBounds(polyline.getBounds());
-        return () => map.removeLayer(polyline);
+      if (routeCoordinates.length > 0) {
+        const bounds = L.latLngBounds(routeCoordinates);
+        map.fitBounds(bounds, { padding: [50, 50] });
       }
-    }, [selectedBus, map]);
+    }, [routeCoordinates, map]);
 
-    // Add route path display
-    useEffect(() => {
-      if (routePath.length > 0) {
-        const routePolyline = L.polyline(routePath, { color: 'blue', weight: 4 }).addTo(map);
-        map.fitBounds(routePolyline.getBounds());
-        return () => map.removeLayer(routePolyline);
-      }
-    }, [routePath, map]);
-
-    return null;
+    return routeCoordinates.length > 0 ? (
+      <Polyline
+        positions={routeCoordinates}
+        color="#2563eb"
+        weight={4}
+        opacity={0.8}
+      />
+    ) : null;
   };
 
   return (
@@ -139,7 +126,7 @@ const MiWayMap = ({ searchTerm }) => {
             </Popup>
           </Marker>
         ))}
-        <BusPath />
+        <RouteDisplay />
       </MapContainer>
     </div>
   );
